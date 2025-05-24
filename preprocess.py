@@ -1,5 +1,5 @@
-import copy 
 from TA import *
+import copy
 
 
 def feature_engineering(data, period = 20, momentum_threshold = 0):

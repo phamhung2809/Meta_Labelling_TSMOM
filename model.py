@@ -1,3 +1,6 @@
+import pandas as pd
+import numpy as np
+
 from sklearn.model_selection import train_test_split, TimeSeriesSplit, cross_val_score
 from sklearn.metrics import classification_report,roc_auc_score, make_scorer
 from sklearn.preprocessing import FunctionTransformer
@@ -7,10 +10,6 @@ from sklearn.preprocessing import MinMaxScaler,StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 from sklearn.base import BaseEstimator, TransformerMixin
-
-import pandas as pd
-import numpy as np
-import copy
 
 
 import tensorflow as tf
@@ -33,7 +32,6 @@ from keras.layers import Dense, LSTM
 from keras.losses import BinaryCrossentropy
 
 from optuna import Trial, create_study, create_trial
-
 
 def instantiate_random_trees(trial) -> RandomForestClassifier:
   params = {
