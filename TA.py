@@ -1,4 +1,5 @@
 import pandas as pd
+import copy 
 
 def MA(data, period):
    return data.rolling(period).mean()
