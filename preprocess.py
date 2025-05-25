@@ -47,7 +47,7 @@ def feature_engineering(data, period = 20, momentum_threshold = 0):
 
   temp['Future_result'] = temp['close'].rolling(2).apply(lambda x: x.iloc[1] - x.iloc[0]).shift(-1)
 
-  temp['good_signal']= ((temp["Future_result"] * (temp["signal_momentum"]>0)) > 0).astype(int)
+  temp['good_signal']= ((temp["Future_result"] * (temp["signal_momentum"])) > 0).astype(int)
 
   # temp['good_signal']= ((temp["Future_result"] * np.sign(temp['signal_momentum'])) > 0).astype(int)
 
