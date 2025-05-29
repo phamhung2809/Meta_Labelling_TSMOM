@@ -113,7 +113,7 @@ class Lasso_supervised(kt.HyperModel):
 
     def build(self,hp):
         model = Sequential([
-            Dense(1, input_shape = (48,),kernel_regularizer = l1(hp.Choice("l1_weight", [1e-4, 1e-3, 1e-2, 0.1,])),activation= 'sigmoid' if self.binary else None)
+            Dense(1, input_shape = (47,),kernel_regularizer = l1(hp.Choice("l1_weight", [1e-4, 1e-3, 1e-2, 0.1,])),activation= 'sigmoid' if self.binary else None)
         ])
         
         if self.binary == True:
@@ -179,7 +179,7 @@ class MLP_supervised(kt.HyperModel):
 
     def build(self,hp):
         model = Sequential([
-            Dropout(0, input_shape=(48,)),
+            Dropout(0, input_shape=(47,)),
             Dense(units=hp.Choice(f"units", [5, 20, 40]),activation = hp.Choice('activation', ['relu'])),
             Dropout(rate=hp.Choice("dropout", [0.1, 0.3, 0.5])),
             Dense(1,activation = 'sigmoid' if self.binary else None),
@@ -187,7 +187,7 @@ class MLP_supervised(kt.HyperModel):
 
         if self.binary == True:
             loss = 'binary_crossentropy'
-        else: loss = tf.keras.metrics.RootMeanSquaredError()
+        else: loss = tf.keras.metrics.AUC()
 
         model.compile(
             optimizer=Adam(

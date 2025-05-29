@@ -2,7 +2,23 @@ from TA import *
 import copy
 
 
-def feature_engineering(data, period = 20, momentum_threshold = 0):
+def triple_barier_labels(data,day_barrier, pct_barrier):
+  label =  copy.deepcopy(data) * 0
+  for i in range (day_barrier, 0, -1):
+    temp = data.pct_change(i)
+    flag = 0
+    for x,v in enumerate(temp.index):
+      if np.isnan(temp.loc[v]): continue
+      if temp.loc[v] >= pct_barrier: 
+        label.loc[v] = i
+        flag +=1
+      elif temp.loc[v] <= -pct_barrier: 
+        label.loc[v] = -i
+        flag +=1
+    # print(f"{i}: {flag}")
+  return label
+
+def feature_engineering(data, period = 20, day_barrier = 5, pct_barrier = 0.05):
   '''Hàm dùng để tạo feature từ dữ liệu đã được chuyển về daily
       INPUT: data_list(list): Một list bao gồm các dataframe đã được chuyển về daily
         * Lưu ý: Nếu chỉ sử dụng 1 công ty, chỉ cần truyền vào 1 dataframe dưới dạng list: (VD: [df])
@@ -15,14 +31,6 @@ def feature_engineering(data, period = 20, momentum_threshold = 0):
   temp['Symbol'] = data.name
   # # Tính MA
   for x in [20,60,252]:
-    # feature = 'MA' + str(x)
-  #   # temp[feature] = MA(temp['close'], x)
-  #   feature = 'EMA' + str(x)
-  #   temp[feature] = EMA(temp['close'], x)
-  #   # feature = 'MA_volume' + str(x)
-  #   # temp[feature] = MA(temp['volume'], x)
-  #   # feature = 'EMA_volume' + str(x)
-  #   # temp[feature] = EMA(temp['volume'], x)
     feature = 'RSI' + str(x)
     temp[feature] = RSI(temp['close'],x)
     feature = 'PSY' + str(x)
@@ -40,6 +48,8 @@ def feature_engineering(data, period = 20, momentum_threshold = 0):
 
   temp['Volume'] = temp['volume']
 
+  temp['VWAP'] = (((temp['high'] + temp['low'] + temp['close']) / 3)* temp['Volume']).cumsum() / temp['Volume'].cumsum()
+
   temp['signal_momentum'] = temp['close'].rolling(period).apply(lambda x: x.iloc[period - 1] / x.iloc[0] - 1)
   # temp['signal_momentum'] = [1 if x > momentum_threshold else -1 if x < -momentum_threshold else 0 for x in temp['momentum']]
   # temp['signal_momentum'] = [1 if x > momentum_threshold else 0 for x in temp['momentum']]
@@ -47,12 +57,14 @@ def feature_engineering(data, period = 20, momentum_threshold = 0):
 
   temp['Future_result'] = temp['close'].rolling(2).apply(lambda x: x.iloc[1] - x.iloc[0]).shift(-1)
 
-  temp['good_signal']= ((temp["Future_result"] * (temp["signal_momentum"])) > 0).astype(int)
+  temp['good_signal'] = triple_barier_labels(temp['close'], day_barrier, pct_barrier)
+
+  # temp['good_signal'] = ((temp["Future_result"] * (temp["signal_momentum"])) > 0).astype(int)
 
   # temp['good_signal']= ((temp["Future_result"] * np.sign(temp['signal_momentum'])) > 0).astype(int)
 
 
-  temp.drop(columns = ['open','high','low','volume','close','Future_result'], inplace = True)
+  temp.drop(columns = ['open','high','low','volume','close','Future_result','Volume'], inplace = True)
 
   # Xóa những cột xuất hiện NA (Xảy ra với các hàng đầu của dữ liệu khi không có hơn 5 ngày để quan sát RSI)
   temp.dropna(axis=0, how="any", inplace = True)

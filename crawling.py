@@ -34,7 +34,6 @@ def VN_Stock_fully_data(start_time,end_time, list_choice = 'VN30', interval = '1
     data = []
 
     for ma_ck in stock_list:
-        print(ma_ck)
         try:
             stock = Vnstock().stock(symbol= ma_ck, source='VCI')
             df = stock.quote.history(start= start_time, end= end_time, interval= interval)
