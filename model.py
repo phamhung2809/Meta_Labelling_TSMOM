@@ -11,11 +11,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 from sklearn.base import BaseEstimator, TransformerMixin
 
-
+import torch.nn as nn
 import tensorflow as tf
 from tensorflow.keras import backend as K
 from keras.models import Sequential
-from keras.layers import Dense, Dropout
+from keras.layers import Dense, Dropout, LSTM
 from keras.callbacks import EarlyStopping, ModelCheckpoint, Callback
 from keras.regularizers import l1, l2
 from keras.optimizers import Adam
@@ -113,16 +113,16 @@ class Lasso_supervised(kt.HyperModel):
 
     def build(self,hp):
         model = Sequential([
-            Dense(1, input_shape = (47,),kernel_regularizer = l1(hp.Choice("l1_weight", [1e-4, 1e-3, 1e-2, 0.1,])),activation= 'sigmoid' if self.binary else None)
+            Dense(11, input_shape = (19,),kernel_regularizer = l1(hp.Choice("l1_weight", [1e-4, 1e-3, 1e-2, 0.1,])),activation= 'softmax' if self.binary else None)
         ])
         
         if self.binary == True:
-            loss = 'binary_crossentropy'
+            loss = "sparse_categorical_crossentropy"
         else: loss = tf.keras.metrics.RootMeanSquaredError()
 
         model.compile(
             optimizer=Adam(
-                learning_rate=hp.Choice("learning_rate", [1e-3, 1e-1, 1.0]),
+                learning_rate=hp.Choice("learning_rate", [1e-3, 1e-1, 1e-2, 0.1,1.0]),
                 clipnorm = hp.Choice("max_grad_norm", [1e-2, 0.1, 1.0, 10.0])
             ),
             loss= loss,
@@ -137,7 +137,7 @@ class Lasso_supervised(kt.HyperModel):
         )
 
 def train_Lasso_supervised(X_train,y_train,k,h,binary = True):
-
+    y_train = y_train + 5
     tuner = kt.GridSearch(
         Lasso_supervised(k = k,binary=binary),
         objective="loss",
@@ -179,15 +179,15 @@ class MLP_supervised(kt.HyperModel):
 
     def build(self,hp):
         model = Sequential([
-            Dropout(0, input_shape=(47,)),
+            Dropout(0, input_shape=(19,)),
             Dense(units=hp.Choice(f"units", [5, 20, 40]),activation = hp.Choice('activation', ['relu'])),
             Dropout(rate=hp.Choice("dropout", [0.1, 0.3, 0.5])),
-            Dense(1,activation = 'sigmoid' if self.binary else None),
+            Dense(11,activation = 'softmax' if self.binary else None),
         ])
 
         if self.binary == True:
-            loss = 'binary_crossentropy'
-        else: loss = tf.keras.metrics.AUC()
+            loss =  "sparse_categorical_crossentropy"
+        else: loss = nn.CrossEntropyLoss(label_smoothing=0.1)
 
         model.compile(
             optimizer=Adam(
@@ -208,7 +208,7 @@ class MLP_supervised(kt.HyperModel):
 
 
 def train_MLP_supervised(X_train,y_train,k,h,binary = True):
-    
+    y_train = y_train + 5
     tuner = kt.GridSearch(
         MLP_supervised(k = k,binary = binary),
         objective="loss",
@@ -238,3 +238,81 @@ def train_MLP_supervised(X_train,y_train,k,h,binary = True):
     history = hypermodel.fit(best_hp,model,X_train, y_train,callbacks = [model_checkpoint_callback])
     
     return model,history    
+
+
+    
+class LSTM_supervised(kt.HyperModel):
+    def __init__(self, k, binary):
+        self.k = k  # number of timesteps
+        self.binary = binary
+
+    def build(self, hp):
+        model = Sequential()
+        model.add(LSTM(
+            units=hp.Choice("units", [16, 32, 64]),
+            input_shape=(16,1),
+            return_sequences=False
+        ))
+        model.add(Dropout(rate=hp.Choice("dropout", [0.1, 0.3, 0.5])))
+
+        if self.binary:
+            model.add(Dense(11, activation="softmax"))
+            loss = "sparse_categorical_crossentropy"
+        else:
+            model.add(Dense(1))
+            loss = "mse"
+
+        model.compile(
+            optimizer=Adam(
+                learning_rate=hp.Choice("learning_rate", [1e-4, 1e-3, 1e-2]),
+                clipnorm=hp.Choice("max_grad_norm", [1e-2, 0.1, 1.0, 10.0])
+            ),
+            loss=loss
+        )
+        return model
+
+    def fit(self, hp, model, *args, **kwargs):
+        return model.fit(
+            *args,
+            batch_size=hp.Choice("batch_size", [64, 128, 256]),
+            epochs=100,
+            verbose=1,
+            **kwargs
+        )
+
+
+
+def train_LSTM_supervised(X_train, y_train, k, binary=True):
+    X_train = X_train.to_numpy()
+    y_train = y_train + 5
+    X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))
+    tuner = kt.GridSearch(
+        LSTM_supervised(k=k, binary=binary),
+        objective="loss",
+        max_trials=100,
+        overwrite=True,
+        directory="tuning_dir",
+        project_name=f"tune_LSTM_supervised_{'binary' if binary else 'reg'}",
+    )
+
+    es = EarlyStopping(monitor='loss', verbose=1, patience=25)
+
+    checkpoint_filepath = (
+        'Checkpoint/checkpoint_lstm_sup_binary.model.keras' if binary
+        else 'Checkpoint/checkpoint_lstm_sup_reg.model.keras'
+    )
+    model_checkpoint_callback = ModelCheckpoint(
+        filepath=checkpoint_filepath,
+        monitor='loss',
+        save_best_only=True
+    )
+
+    tuner.search(X_train, y_train, callbacks=[es])
+
+    hypermodel = LSTM_supervised(k=k, binary=binary)
+    best_hp = tuner.get_best_hyperparameters()[0]
+    model = hypermodel.build(best_hp)
+
+    history = hypermodel.fit(best_hp, model, X_train, y_train, callbacks=[model_checkpoint_callback])
+
+    return model, history
