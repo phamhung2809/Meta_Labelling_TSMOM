@@ -107,13 +107,14 @@ def train_random_forest(trainX,trainY):
 
 
 class Lasso_supervised(kt.HyperModel):
-    def __init__(self, k,binary):
+    def __init__(self, k, num_feature,binary):
         self.k = k
         self.binary = binary
+        self.num_feature = num_feature
 
     def build(self,hp):
         model = Sequential([
-            Dense(11, input_shape = (19,),kernel_regularizer = l1(hp.Choice("l1_weight", [1e-4, 1e-3, 1e-2, 0.1,])),activation= 'softmax' if self.binary else None)
+            Dense(11, input_shape = (self.num_feature,),kernel_regularizer = l1(hp.Choice("l1_weight", [1e-4, 1e-3, 1e-2, 0.1,])),activation= 'softmax' if self.binary else None)
         ])
         
         if self.binary == True:
@@ -136,10 +137,10 @@ class Lasso_supervised(kt.HyperModel):
             **kwargs, epochs = 100, verbose=1
         )
 
-def train_Lasso_supervised(X_train,y_train,k,h,binary = True):
+def train_Lasso_supervised(X_train,y_train,k,h,num_feature,binary = True):
     y_train = y_train + 5
     tuner = kt.GridSearch(
-        Lasso_supervised(k = k,binary=binary),
+        Lasso_supervised(k = k,binary=binary,num_feature = num_feature),
         objective="loss",
         max_trials=100,
         overwrite=True,
@@ -162,7 +163,7 @@ def train_Lasso_supervised(X_train,y_train,k,h,binary = True):
 
     tuner.search(X_train, y_train, callbacks = [es])
 
-    hypermodel = Lasso_supervised(k = k,binary=binary)
+    hypermodel = Lasso_supervised(k = k,binary=binary, num_feature = num_feature)
     best_hp = tuner.get_best_hyperparameters()[0]
     model = hypermodel.build(best_hp)
 
@@ -173,13 +174,14 @@ def train_Lasso_supervised(X_train,y_train,k,h,binary = True):
 
 
 class MLP_supervised(kt.HyperModel):
-    def __init__(self, k,binary):
+    def __init__(self, k,num_feature,binary):
         self.k = k
         self.binary = binary
+        self.num_feature = num_feature
 
     def build(self,hp):
         model = Sequential([
-            Dropout(0, input_shape=(19,)),
+            Dropout(0, input_shape=(self.num_feature,)),
             Dense(units=hp.Choice(f"units", [5, 20, 40]),activation = hp.Choice('activation', ['relu'])),
             Dropout(rate=hp.Choice("dropout", [0.1, 0.3, 0.5])),
             Dense(11,activation = 'softmax' if self.binary else None),
@@ -207,10 +209,10 @@ class MLP_supervised(kt.HyperModel):
     
 
 
-def train_MLP_supervised(X_train,y_train,k,h,binary = True):
+def train_MLP_supervised(X_train,y_train,k,h,num_feature,binary = True):
     y_train = y_train + 5
     tuner = kt.GridSearch(
-        MLP_supervised(k = k,binary = binary),
+        MLP_supervised(k = k,binary = binary,num_feature = num_feature),
         objective="loss",
         max_trials=100,
         overwrite=True,
@@ -231,7 +233,7 @@ def train_MLP_supervised(X_train,y_train,k,h,binary = True):
 
     tuner.search(X_train, y_train, callbacks = [es])
 
-    hypermodel = MLP_supervised(k = k,binary = binary)
+    hypermodel = MLP_supervised(k = k,binary = binary, num_feature= num_feature)
     best_hp = tuner.get_best_hyperparameters()[0]
     model = hypermodel.build(best_hp)
 
@@ -242,15 +244,16 @@ def train_MLP_supervised(X_train,y_train,k,h,binary = True):
 
     
 class LSTM_supervised(kt.HyperModel):
-    def __init__(self, k, binary):
+    def __init__(self, k, num_feature,binary):
         self.k = k  # number of timesteps
         self.binary = binary
+        self.num_feature = num_feature
 
     def build(self, hp):
         model = Sequential()
         model.add(LSTM(
             units=hp.Choice("units", [16, 32, 64]),
-            input_shape=(16,1),
+            input_shape=(self.num_feature,1),
             return_sequences=False
         ))
         model.add(Dropout(rate=hp.Choice("dropout", [0.1, 0.3, 0.5])))
@@ -282,12 +285,12 @@ class LSTM_supervised(kt.HyperModel):
 
 
 
-def train_LSTM_supervised(X_train, y_train, k, binary=True):
+def train_LSTM_supervised(X_train, y_train, k ,num_feature, binary=True):
     X_train = X_train.to_numpy()
     y_train = y_train + 5
     X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))
     tuner = kt.GridSearch(
-        LSTM_supervised(k=k, binary=binary),
+        LSTM_supervised(k=k, binary=binary, num_feature = num_feature),
         objective="loss",
         max_trials=100,
         overwrite=True,
@@ -309,7 +312,7 @@ def train_LSTM_supervised(X_train, y_train, k, binary=True):
 
     tuner.search(X_train, y_train, callbacks=[es])
 
-    hypermodel = LSTM_supervised(k=k, binary=binary)
+    hypermodel = LSTM_supervised(k=k, binary=binary, num_feature = num_feature)
     best_hp = tuner.get_best_hyperparameters()[0]
     model = hypermodel.build(best_hp)
 
