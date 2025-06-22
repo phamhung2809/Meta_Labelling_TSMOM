@@ -69,18 +69,18 @@ def objective(trial : Trial, X : pd.DataFrame, y : np.ndarray | pd.Series, rando
   return np.min([np.mean(scores), np.median([scores])])
 
 
-def train_random_forest_optuna(trainX,trainY):
+# def train_random_forest_optuna(trainX,trainY):
 
-  study = create_study(study_name='optimization', direction='maximize')
+#   study = create_study(study_name='optimization', direction='maximize')
 
-  study.optimize(lambda trial: objective(trial, trainX, trainY), n_trials=100)
+#   study.optimize(lambda trial: objective(trial, trainX, trainY), n_trials=100)
 
-  best_trial = study.best_trial
+#   best_trial = study.best_trial
 
-  model = instantiate_model(best_trial)
-  model.fit(trainX, trainY)
+#   model = instantiate_model(best_trial)
+#   model.fit(trainX, trainY)
 
-  return model
+#   return model
 
 def train_random_forest(trainX,trainY):
   ''' Hàm train mô hình Random Forest
@@ -114,11 +114,11 @@ class Lasso_supervised(kt.HyperModel):
 
     def build(self,hp):
         model = Sequential([
-            Dense(11, input_shape = (self.num_feature,),kernel_regularizer = l1(hp.Choice("l1_weight", [1e-4, 1e-3, 1e-2, 0.1,])),activation= 'softmax' if self.binary else None)
+            Dense(1, input_shape = (self.num_feature,),kernel_regularizer = l1(hp.Choice("l1_weight", [1e-4, 1e-3, 1e-2, 0.1,])),activation= 'softmax' if self.binary else None)
         ])
         
         if self.binary == True:
-            loss = "sparse_categorical_crossentropy"
+            loss = 'binary_crossentropy'
         else: loss = tf.keras.metrics.RootMeanSquaredError()
 
         model.compile(
@@ -138,7 +138,6 @@ class Lasso_supervised(kt.HyperModel):
         )
 
 def train_Lasso_supervised(X_train,y_train,k,h,num_feature,binary = True):
-    y_train = y_train + 5
     tuner = kt.GridSearch(
         Lasso_supervised(k = k,binary=binary,num_feature = num_feature),
         objective="loss",
@@ -184,11 +183,11 @@ class MLP_supervised(kt.HyperModel):
             Dropout(0, input_shape=(self.num_feature,)),
             Dense(units=hp.Choice(f"units", [5, 20, 40]),activation = hp.Choice('activation', ['relu'])),
             Dropout(rate=hp.Choice("dropout", [0.1, 0.3, 0.5])),
-            Dense(11,activation = 'softmax' if self.binary else None),
+            Dense(1,activation = 'softmax' if self.binary else None),
         ])
 
         if self.binary == True:
-            loss =  "sparse_categorical_crossentropy"
+            loss =  'binary_crossentropy'
         else: loss = nn.CrossEntropyLoss(label_smoothing=0.1)
 
         model.compile(
@@ -210,7 +209,6 @@ class MLP_supervised(kt.HyperModel):
 
 
 def train_MLP_supervised(X_train,y_train,k,h,num_feature,binary = True):
-    y_train = y_train + 5
     tuner = kt.GridSearch(
         MLP_supervised(k = k,binary = binary,num_feature = num_feature),
         objective="loss",
@@ -259,8 +257,8 @@ class LSTM_supervised(kt.HyperModel):
         model.add(Dropout(rate=hp.Choice("dropout", [0.1, 0.3, 0.5])))
 
         if self.binary:
-            model.add(Dense(11, activation="softmax"))
-            loss = "sparse_categorical_crossentropy"
+            model.add(Dense(1, activation="softmax"))
+            loss = 'binary_crossentropy'
         else:
             model.add(Dense(1))
             loss = "mse"
@@ -287,7 +285,6 @@ class LSTM_supervised(kt.HyperModel):
 
 def train_LSTM_supervised(X_train, y_train, k ,num_feature, binary=True):
     X_train = X_train.to_numpy()
-    y_train = y_train + 5
     X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))
     tuner = kt.GridSearch(
         LSTM_supervised(k=k, binary=binary, num_feature = num_feature),

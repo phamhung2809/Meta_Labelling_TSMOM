@@ -58,18 +58,19 @@ def feature_engineering(data, period = 20, day_barrier = 5, pct_barrier = 0.05):
 
 
   # cpd_df = run_CPD(
-  #   time_series_data=temp['close'],
+  #   time_series_data=pd.DataFrame(temp['close']),
   #   # time_series_data   = df_returns,
   #   lookback_window_length=period,
-  #   start_date = temp.index[0].to_pydatetime().date(),
-  #   end_date = temp.index[-1].to_pydatetime().date(),
+  #   start_date = temp.index[0],
+  #   end_date = temp.index[-1],
   #   use_kM_hyp_to_initialize_kC=True
   # )
 
   # temp.join(cpd_df, how = 'left')
+  # print(temp)
 
-  detector = BOCPD(run_length = period) ## ->vào source 
-  temp['changepoint_bocd'] = detector.transform(temp['close'])
+  # detector = BOCPD(run_length = period) ## ->vào source 
+  # temp['changepoint_bocd'] = detector.transform(temp['close'])
 
 
 
@@ -80,7 +81,7 @@ def feature_engineering(data, period = 20, day_barrier = 5, pct_barrier = 0.05):
 
   # temp['Future_result'] = temp['close'].rolling(2).apply(lambda x: x.iloc[1] - x.iloc[0]).shift(-1)
 
-  temp['good_signal'] = (triple_barier_labels(temp['close'], day_barrier, pct_barrier)> 0).astype(int)
+  temp['good_signal'] = ((triple_barier_labels(temp['close'], day_barrier, pct_barrier)/ ((temp['signal_momentum']> 0)+1e-11)) > 0).astype(int)
 
   temp['Close'] = temp['close']
 
