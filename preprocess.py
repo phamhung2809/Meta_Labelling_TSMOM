@@ -5,25 +5,51 @@ from changepoint import *
 from changepoynt.algorithms.bocpd import BOCPD  # import the scoring algorithm
 from changepoynt.visualization.score_plotting import plot_data_and_score  # import a visualization function
 
+def Volatility_scale(data, ignore_na=False, adjust = True, com = 60, min_periods=0):
+    """Scale data using ex ante volatility"""
+
+    # Lưu trữ index, tức thời gian 
+    std_index = data.index
+
+    # chứa kết quả
+    daily_index = pd.DataFrame(index=std_index)
+
+    returns = data.pct_change(1)  # Lấy ra các return
+    returns.dropna(inplace=True)  # xử lý null bằng zero
+
+    # Tính daily volatility (vol)
+    day_vol = returns.ewm(ignore_na=ignore_na,
+                          adjust=adjust,
+                          com=com,
+                          min_periods=min_periods).std(bias=False)
+    
+    vol = day_vol * np.sqrt(252)  # scale lại theo 252 ngày active trading
+
+    return vol
 
 
 def triple_barier_labels(data,day_barrier, pct_barrier):
+  scale_vol = Volatility_scale(data)
   label =  copy.deepcopy(data) * 0
+  high_barrier = data + scale_vol * pct_barrier
+  low_barrier = data - scale_vol * pct_barrier
   for i in range (day_barrier, 0, -1):
-    temp = data.pct_change(i)
     flag = 0
-    for x,v in enumerate(temp.index):
-      if np.isnan(temp.loc[v]): continue
-      if temp.loc[v] >= pct_barrier: 
-        label.loc[v] = i
-        flag +=1
-      elif temp.loc[v] <= -pct_barrier: 
-        label.loc[v] = -i
-        flag +=1
+    for x,v in enumerate(data.index):
+      try:
+        if np.isnan(high_barrier.iloc[x]): continue
+        if data.iloc[x+i] > high_barrier.iloc[x]: 
+          label.iloc[x] = i
+          flag +=1
+        elif data.iloc[x+i] < low_barrier.iloc[x]: 
+          label.iloc[x] = -i
+          flag +=1
+      except:
+        continue
     # print(f"{i}: {flag}")
   return label
 
-def feature_engineering(data, period = 20, day_barrier = 5, pct_barrier = 0.05):
+def feature_engineering(data, period = 20, day_barrier = 5, pct_barrier = 0.5):
   '''Hàm dùng để tạo feature từ dữ liệu đã được chuyển về daily
       INPUT: data_list(list): Một list bao gồm các dataframe đã được chuyển về daily
         * Lưu ý: Nếu chỉ sử dụng 1 công ty, chỉ cần truyền vào 1 dataframe dưới dạng list: (VD: [df])
@@ -66,11 +92,10 @@ def feature_engineering(data, period = 20, day_barrier = 5, pct_barrier = 0.05):
   #   use_kM_hyp_to_initialize_kC=True
   # )
 
-  # temp.join(cpd_df, how = 'left')
-  # print(temp)
+  # temp = pd.concat([temp, cpd_df], axis=1)
 
-  # detector = BOCPD(run_length = period) ## ->vào source 
-  # temp['changepoint_bocd'] = detector.transform(temp['close'])
+  detector = BOCPD(run_length = period) ## ->vào source 
+  temp['changepoint_bocd'] = detector.transform(temp['close'])
 
 
 
