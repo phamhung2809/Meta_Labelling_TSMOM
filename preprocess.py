@@ -49,7 +49,7 @@ def triple_barier_labels(data,day_barrier, pct_barrier):
     # print(f"{i}: {flag}")
   return label
 
-def feature_engineering(data, period = 20, day_barrier = 5, pct_barrier = 0.5):
+def feature_engineering(data, period = 20, day_barrier = 5, pct_barrier = 0.1):
   '''Hàm dùng để tạo feature từ dữ liệu đã được chuyển về daily
       INPUT: data_list(list): Một list bao gồm các dataframe đã được chuyển về daily
         * Lưu ý: Nếu chỉ sử dụng 1 công ty, chỉ cần truyền vào 1 dataframe dưới dạng list: (VD: [df])
@@ -67,13 +67,13 @@ def feature_engineering(data, period = 20, day_barrier = 5, pct_barrier = 0.5):
     feature = 'PSY' + str(x)
     temp[feature] = Psy_line(temp['close'],x)
 
-  # for x in [1,3,5,10,15,20,40,60]:
-  # #   # feature = 'P' + str(x)
-  # #   # temp[feature] = temp['close'].shift(x)
-  #   feature = 'ROC' + str(x)
-  #   temp[feature] = ROC(temp['close'],x)
+  for x in [1,3,5,10,15]:
+  #   # feature = 'P' + str(x)
+  #   # temp[feature] = temp['close'].shift(x)
+    feature = 'ROC' + str(x)
+    temp[feature] = ROC(temp['close'],x)
 
-  # temp['MACD_1_5'] = MACD(temp['close'],1,5)
+  temp['MACD_1_5'] = MACD(temp['close'],1,5)
   temp['MACD_5_20'] = MACD(temp['close'],5,20)
   temp['MACD_20_60'] = MACD(temp['close'],20,60)
 
@@ -94,19 +94,20 @@ def feature_engineering(data, period = 20, day_barrier = 5, pct_barrier = 0.5):
 
   # temp = pd.concat([temp, cpd_df], axis=1)
 
-  detector = BOCPD(run_length = period) ## ->vào source 
+  detector = BOCPD(run_length = period)
   temp['changepoint_bocd'] = detector.transform(temp['close'])
 
 
 
   temp['signal_momentum'] = temp['close'].pct_change(period)
+  
   # temp['signal_momentum'] = [1 if x > momentum_threshold else -1 if x < -momentum_threshold else 0 for x in temp['momentum']]
   # temp['signal_momentum'] = [1 if x > momentum_threshold else 0 for x in temp['momentum']]
 
 
   # temp['Future_result'] = temp['close'].rolling(2).apply(lambda x: x.iloc[1] - x.iloc[0]).shift(-1)
 
-  temp['good_signal'] = ((triple_barier_labels(temp['close'], day_barrier, pct_barrier)/ ((temp['signal_momentum']> 0)+1e-11)) > 0).astype(int)
+  temp['good_signal'] = (((triple_barier_labels(temp['close'], day_barrier, pct_barrier)>0) * ((temp['signal_momentum']> 0))) > 0).astype(int)
 
   temp['Close'] = temp['close']
 

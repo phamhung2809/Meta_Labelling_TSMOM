@@ -92,7 +92,7 @@ def train_random_forest(trainX,trainY):
   pipeline = Pipeline(
       [
           # ("scaler", TimeSeriesScalerDF('VN30')),
-          # ("scaler", scaler),
+        #   ("scaler", scaler),
           ("classifier", RandomForestClassifier()),
           # ("classifier", DecisionTreeClassifier()),
 
