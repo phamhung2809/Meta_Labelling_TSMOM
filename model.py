@@ -33,9 +33,10 @@ from keras.losses import BinaryCrossentropy
 
 from optuna import Trial, create_study, create_trial
 
-def instantiate_random_trees(trial) -> RandomForestClassifier:
+def instantiate_rf(trial) -> RandomForestClassifier:
   params = {
     'n_estimators': trial.suggest_int('n_estimators', 50, 1000),
+    'class_weight': trial.suggest_categorical('class_weight', ['balanced', 'balanced_subsample', None]),
     'max_depth': trial.suggest_int('max_depth', 10, 25),
     'min_samples_split': trial.suggest_float('min_samples_split', 0,1),
     'min_samples_leaf': trial.suggest_float('min_samples_leaf', 0,1),
@@ -47,7 +48,7 @@ def instantiate_random_trees(trial) -> RandomForestClassifier:
 
 def instantiate_model(trial : Trial) -> Pipeline:
 
-  random_tree_model = instantiate_random_trees(trial)
+  random_tree_model = instantiate_rf(trial)
 
   pipeline = Pipeline(
       [
@@ -58,9 +59,9 @@ def instantiate_model(trial : Trial) -> Pipeline:
 
   return pipeline
 
-def objective(trial : Trial, X : pd.DataFrame, y : np.ndarray | pd.Series, random_state : int=42) -> float:
+def objective_rf(trial : Trial, X : pd.DataFrame, y : np.ndarray | pd.Series, random_state : int=42) -> float:
 
-  model = instantiate_model(trial)
+  model = instantiate_rf(trial)
 
   split = TimeSeriesSplit(n_splits= 5)
   roc_auc_scorer = make_scorer(roc_auc_score)
@@ -69,18 +70,18 @@ def objective(trial : Trial, X : pd.DataFrame, y : np.ndarray | pd.Series, rando
   return np.min([np.mean(scores), np.median([scores])])
 
 
-# def train_random_forest_optuna(trainX,trainY):
+def train_random_forest_optuna(trainX,trainY):
 
-#   study = create_study(study_name='optimization', direction='maximize')
+  study = create_study(study_name='optimization', direction='maximize')
 
-#   study.optimize(lambda trial: objective(trial, trainX, trainY), n_trials=100)
+  study.optimize(lambda trial: objective_rf(trial, trainX, trainY), n_trials=100)
 
-#   best_trial = study.best_trial
+  best_trial = study.best_trial
 
-#   model = instantiate_model(best_trial)
-#   model.fit(trainX, trainY)
+  model = instantiate_rf(best_trial)
+  model.fit(trainX, trainY)
 
-#   return model
+  return model
 
 def train_random_forest(trainX,trainY):
   ''' Hàm train mô hình Random Forest
@@ -171,7 +172,6 @@ def train_Lasso_supervised(X_train,y_train,k,h,num_feature,binary = True):
     return model,history
 
 
-
 class MLP_supervised(kt.HyperModel):
     def __init__(self, k,num_feature,binary):
         self.k = k
@@ -251,7 +251,7 @@ class LSTM_supervised(kt.HyperModel):
         model = Sequential()
         model.add(LSTM(
             units=hp.Choice("units", [16, 32, 64]),
-            input_shape=(self.num_feature,1),
+            input_shape=(50,self.num_feature),
             return_sequences=False
         ))
         model.add(Dropout(rate=hp.Choice("dropout", [0.1, 0.3, 0.5])))
@@ -284,8 +284,7 @@ class LSTM_supervised(kt.HyperModel):
 
 
 def train_LSTM_supervised(X_train, y_train, k ,num_feature, binary=True):
-    X_train = X_train.to_numpy()
-    X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))
+
     tuner = kt.GridSearch(
         LSTM_supervised(k=k, binary=binary, num_feature = num_feature),
         objective="loss",
