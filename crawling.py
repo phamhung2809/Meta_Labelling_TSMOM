@@ -31,20 +31,21 @@ def VN_Stock_close_data(start_time,end_time, list_choice = 'VN30', interval = '1
 def VN_Stock_fully_data(start_time,end_time, list_choice = 'VN30', interval = '1D'):
     stock = Vnstock().stock(symbol='ACB', source='VCI')
     stock_list = stock.listing.symbols_by_group(list_choice)
-    data = []
+    data = pd.DataFrame(columns= ['open', 'high', 'low','close','volume', 'Symbol'])
 
     for ma_ck in stock_list:
         try:
             stock = Vnstock().stock(symbol= ma_ck, source='VCI')
             df = stock.quote.history(start= start_time, end= end_time, interval= interval)
             df = df.set_index('time')
-            df.name = ma_ck
+            df['Symbol'] = ma_ck
             if interval != '1D':
               df['Date']= pd.to_datetime(df.index,format='%Y-%m-%d')
             else:
               df['Date'] = pd.to_datetime(df.index,format='%Y-%m-%d %H:%M:%S')
             df.set_index('Date', inplace=True)
-            data.append(df)
+
+            data = pd.concat([data, df], axis = 0)
         except:
             continue
 

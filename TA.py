@@ -9,23 +9,11 @@ def EMA(data, period):
     return pd.Series(data.ewm(ignore_na=False, span=period, adjust=True).mean())
 
 def MACD(data,period_fast = 1,period_slow = 5):
-    '''Hàm dùng để tính MACD
-       INPUT:
-          data(series): Dãy dữ liệu giá của chứng khoán trong 1 khoảng thời gian
-          period_fast, period_slow: Chu trình fast,slow; mặc định là (1,5) do số lượng dữ liệu giới hạn
-       OUTPUT: MACD(series): Dãy kết quả MACD
-    '''
     EMA_fast = EMA(data,period_fast)
     EMA_Slow = EMA(data,period_slow)
     return EMA_fast - EMA_Slow
 
 def RSI(data, period  = 6):
-    '''Hàm dùng để tính RSI (đã scaled)
-       INPUT:
-          data(series): Dãy dữ liệu giá của chứng khoán trong 1 khoảng thời gian
-          period: Chu trình RSI; mặc định là 5  do số lượng dữ liệu giới hạn
-       OUTPUT: RSI(Series): Dãy kết quả RSI
-    '''
     # Tính sự thay đổi hằng ngày
     delta = data.diff()
 
