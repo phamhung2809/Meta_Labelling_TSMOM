@@ -1,5 +1,6 @@
 import gpflow
 import pandas as pd
+import numpy as np
 import tensorflow as tf
 import datetime as dt
 from gpflow.kernels import ChangePoints, Matern32
@@ -210,27 +211,29 @@ def run_CPD(
     end_date: dt.datetime = None,
     use_kM_hyp_to_initialize_kC=True
 ):
-    if start_date and end_date:
-        print(time_series_data.loc[:start_date])
-        first_window = time_series_data.loc[:start_date].iloc[
-             -(lookback_window_length + 1) :, :
-         ]
+    # if start_date and end_date:
+    #     print(time_series_data.loc[:start_date])
+    #     first_window = time_series_data.loc[:start_date].iloc[
+    #          -(lookback_window_length + 1) :, :
+    #      ]
 
-        # first_window = time_series_data.loc[:start_date].iloc[
-        #    -(lookback_window_length + 1) :
-        # ]
-        remaining_data = time_series_data.loc[start_date:end_date, :]
-        # remaining_data = time_series_data.loc[start_date:end_date]
-        if remaining_data.index[0] == start_date:
-            remaining_data = remaining_data.iloc[1:]
-        else:
-            first_window = first_window.iloc[1:]
-        time_series_data = pd.concat([first_window, remaining_data]).copy()
-    else:
-        raise Exception("Pass start and end date.")
+    #     # first_window = time_series_data.loc[:start_date].iloc[
+    #     #    -(lookback_window_length + 1) :
+    #     # ]
+    #     remaining_data = time_series_data.loc[start_date:end_date, :]
+    #     # remaining_data = time_series_data.loc[start_date:end_date]
+    #     if remaining_data.index[0] == start_date:
+    #         remaining_data = remaining_data.iloc[1:]
+    #     else:
+    #         first_window = first_window.iloc[1:]
+    #     time_series_data = pd.concat([first_window, remaining_data]).copy()
+    # else:
+    #     raise Exception("Pass start and end date.")
 
+    
     time_series_data["Date"] = time_series_data.index
     time_series_data = time_series_data.reset_index(drop=True)
+    time_series_data["daily_return"] = time_series_data["close"].pct_change()
 
     results = []
     for window_end in range(lookback_window_length + 1, len(time_series_data)):
